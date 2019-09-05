@@ -1,6 +1,6 @@
 import { warn } from '../utils/log'
 import { isFunction } from '../utils/unit'
-import { NO_SLIDES_ERROR } from '../errors'
+import { ERROR, NO_SLIDES_ERROR, SUCCESS } from '../errors'
 
 /**
  * Creates and initializes specified collection of extensions.
@@ -30,7 +30,7 @@ export function mount (glide, extensions, events) {
         switch (name) {
           case 'html':
             if (e.message === NO_SLIDES_ERROR) {
-              return glide.log(e.message)
+              return [ERROR, glide.log(e.message)]
             }
             break
           default:
@@ -40,5 +40,5 @@ export function mount (glide, extensions, events) {
     }
   }
 
-  return components
+  return [SUCCESS, components]
 }
