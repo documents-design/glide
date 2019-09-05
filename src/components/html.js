@@ -2,6 +2,7 @@ import { warn } from '../utils/log'
 import { exist } from '../utils/dom'
 import { define } from '../utils/object'
 import { isString } from '../utils/unit'
+import { NO_SLIDES_ERROR } from '../errors'
 
 const TRACK_SELECTOR = '[data-glide-el="track"]'
 
@@ -15,9 +16,14 @@ export default function (Glide, Components) {
     mount () {
       this.root = Glide.selector
       this.track = this.root.querySelector(TRACK_SELECTOR)
-      this.slides = Array.prototype.slice.call(this.wrapper.children).filter((slide) => {
+      const slides = Array.prototype.slice.call(this.wrapper.children).filter((slide) => {
         return !slide.classList.contains(Glide.settings.classes.slide.clone)
       })
+      if (slides.length > 0) {
+        this.slides = slides
+      } else {
+        throw new Error(NO_SLIDES_ERROR)
+      }
     }
   }
 

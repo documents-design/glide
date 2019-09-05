@@ -11,6 +11,12 @@ export default {
   type: 'slider',
 
   /**
+   * Activates output of log() calls to console
+   * @type {boolean}
+   */
+  debug: false,
+
+  /**
    * Start at specific slide number defined with zero-based index.
    *
    * @type {Number}

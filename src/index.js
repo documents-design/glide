@@ -5,6 +5,7 @@ import { mergeOptions } from './utils/object'
 import { toInt, isObject, isArray } from './utils/unit'
 
 import EventsBus from './core/event/events-bus'
+import { SUCCESS } from './errors'
 
 export default class Glide {
   /**
@@ -25,6 +26,18 @@ export default class Glide {
   }
 
   /**
+   * Logs and returns its parameter in case the debug flag is activated.
+   * @param any
+   * @returns {*}
+   */
+  log (any) {
+    if (this.settings.debug) {
+      console.log(any)
+    }
+    return any
+  }
+
+  /**
    * Initializes glide.
    *
    * @param {Object} extensions Collection of extensions to initialize.
@@ -34,7 +47,12 @@ export default class Glide {
     this._e.emit('mount.before')
 
     if (isObject(extensions)) {
-      this._c = mount(this, extensions, this._e)
+      const [status, payload] = mount(this, extensions, this._e)
+      if (status === SUCCESS) {
+        this._c = payload
+      } else {
+        return payload
+      }
     } else {
       warn('You need to provide a object on `mount()`')
     }

@@ -1,5 +1,6 @@
 import { warn } from '../utils/log'
 import { isFunction } from '../utils/unit'
+import { NO_SLIDES_ERROR } from '../errors'
 
 /**
  * Creates and initializes specified collection of extensions.
@@ -23,7 +24,19 @@ export function mount (glide, extensions, events) {
 
   for (let name in components) {
     if (isFunction(components[name].mount)) {
-      components[name].mount()
+      try {
+        components[name].mount()
+      } catch (e) {
+        switch (name) {
+          case 'html':
+            if (e.message === NO_SLIDES_ERROR) {
+              return glide.log(e.message)
+            }
+            break
+          default:
+            throw e
+        }
+      }
     }
   }
 
