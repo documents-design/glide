@@ -485,7 +485,7 @@ function mount(glide, extensions, events) {
             }
             break;
           default:
-            throw e;
+            break;
         }
       }
     }

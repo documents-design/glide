@@ -491,7 +491,7 @@
               }
               break;
             default:
-              throw e;
+              break;
           }
         }
       }
