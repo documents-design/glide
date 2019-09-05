@@ -17,6 +17,12 @@ var defaults = {
   type: 'slider',
 
   /**
+   * Activates output of log() calls to console
+   * @type {boolean}
+   */
+  debug: false,
+
+  /**
    * Start at specific slide number defined with zero-based index.
    *
    * @type {Number}
@@ -329,6 +335,44 @@ var possibleConstructorReturn = function (self, call) {
   return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
 
+var slicedToArray = function () {
+  function sliceIterator(arr, i) {
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
+
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"]) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  return function (arr, i) {
+    if (Array.isArray(arr)) {
+      return arr;
+    } else if (Symbol.iterator in Object(arr)) {
+      return sliceIterator(arr, i);
+    } else {
+      throw new TypeError("Invalid attempt to destructure non-iterable instance");
+    }
+  };
+}();
+
 /**
  * Converts value entered as number
  * or string to integer value.
@@ -405,6 +449,10 @@ function isArray(value) {
   return value.constructor === Array;
 }
 
+var NO_SLIDES_ERROR = 'ENOSLIDES - Glide.js mount interrupted since there are no slides.';
+var SUCCESS = 'ESUCCESS';
+var ERROR = 'EERROR';
+
 /**
  * Creates and initializes specified collection of extensions.
  * Each extension receives access to instance of glide and rest of components.
@@ -427,11 +475,23 @@ function mount(glide, extensions, events) {
 
   for (var _name in components) {
     if (isFunction(components[_name].mount)) {
-      components[_name].mount();
+      try {
+        components[_name].mount();
+      } catch (e) {
+        switch (_name) {
+          case 'html':
+            if (e.message === NO_SLIDES_ERROR) {
+              return [ERROR, glide.log(e.message)];
+            }
+            break;
+          default:
+            throw e;
+        }
+      }
     }
   }
 
-  return components;
+  return [SUCCESS, components];
 }
 
 /**
@@ -535,6 +595,8 @@ var EventsBus = function () {
         for (var i = 0; i < event.length; i++) {
           this.on(event[i], handler);
         }
+
+        return;
       }
 
       // Create the event's object if not yet created
@@ -567,6 +629,8 @@ var EventsBus = function () {
         for (var i = 0; i < event.length; i++) {
           this.emit(event[i], context);
         }
+
+        return;
       }
 
       // If the event doesn't exist, or there's no handlers in queue, just leave
@@ -605,14 +669,29 @@ var Glide = function () {
   }
 
   /**
-   * Initializes glide.
-   *
-   * @param {Object} extensions Collection of extensions to initialize.
-   * @return {Glide}
+   * Logs and returns its parameter in case the debug flag is activated.
+   * @param any
+   * @returns {*}
    */
 
 
   createClass(Glide, [{
+    key: 'log',
+    value: function log(any) {
+      if (this.settings.debug) {
+        console.log(any);
+      }
+      return any;
+    }
+
+    /**
+     * Initializes glide.
+     *
+     * @param {Object} extensions Collection of extensions to initialize.
+     * @return {Glide}
+     */
+
+  }, {
     key: 'mount',
     value: function mount$$1() {
       var extensions = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -620,7 +699,16 @@ var Glide = function () {
       this._e.emit('mount.before');
 
       if (isObject(extensions)) {
-        this._c = mount(this, extensions, this._e);
+        var _mount2 = mount(this, extensions, this._e),
+            _mount3 = slicedToArray(_mount2, 2),
+            status = _mount3[0],
+            payload = _mount3[1];
+
+        if (status === SUCCESS) {
+          this._c = payload;
+        } else {
+          return payload;
+        }
       } else {
         warn('You need to provide a object on `mount()`');
       }
@@ -1482,9 +1570,14 @@ function Html (Glide, Components) {
     mount: function mount() {
       this.root = Glide.selector;
       this.track = this.root.querySelector(TRACK_SELECTOR);
-      this.slides = Array.prototype.slice.call(this.wrapper.children).filter(function (slide) {
+      var slides = Array.prototype.slice.call(this.wrapper.children).filter(function (slide) {
         return !slide.classList.contains(Glide.settings.classes.slide.clone);
       });
+      if (slides.length > 0) {
+        this.slides = slides;
+      } else {
+        throw new Error(NO_SLIDES_ERROR);
+      }
     }
   };
 
@@ -1956,26 +2049,28 @@ function Clones (Glide, Components, Events) {
           classes = _Glide$settings.classes;
 
 
-      var peekIncrementer = +!!Glide.settings.peek;
-      var cloneCount = perView + peekIncrementer + Math.round(perView / 2);
-      var append = slides.slice(0, cloneCount).reverse();
-      var prepend = slides.slice(cloneCount * -1);
+      if (slides.length !== 0) {
+        var peekIncrementer = +!!Glide.settings.peek;
+        var cloneCount = perView + peekIncrementer + Math.round(perView / 2);
+        var append = slides.slice(0, cloneCount).reverse();
+        var prepend = slides.slice(cloneCount * -1);
 
-      for (var r = 0; r < Math.max(1, Math.floor(perView / slides.length)); r++) {
-        for (var i = 0; i < append.length; i++) {
-          var clone = append[i].cloneNode(true);
+        for (var r = 0; r < Math.max(1, Math.floor(perView / slides.length)); r++) {
+          for (var i = 0; i < append.length; i++) {
+            var clone = append[i].cloneNode(true);
 
-          clone.classList.add(classes.slide.clone);
+            clone.classList.add(classes.slide.clone);
 
-          items.push(clone);
-        }
+            items.push(clone);
+          }
 
-        for (var _i = 0; _i < prepend.length; _i++) {
-          var _clone = prepend[_i].cloneNode(true);
+          for (var _i = 0; _i < prepend.length; _i++) {
+            var _clone = prepend[_i].cloneNode(true);
 
-          _clone.classList.add(classes.slide.clone);
+            _clone.classList.add(classes.slide.clone);
 
-          items.unshift(_clone);
+            items.unshift(_clone);
+          }
         }
       }
 
@@ -3272,6 +3367,8 @@ function Anchors (Glide, Components, Events) {
 
 var NAV_SELECTOR = '[data-glide-el="controls[nav]"]';
 var CONTROLS_SELECTOR = '[data-glide-el^="controls"]';
+var PREVIOUS_CONTROLS_SELECTOR = CONTROLS_SELECTOR + ' [data-glide-dir*="<"]';
+var NEXT_CONTROLS_SELECTOR = CONTROLS_SELECTOR + ' [data-glide-dir*=">"]';
 
 function Controls (Glide, Components, Events) {
   /**
@@ -3306,6 +3403,17 @@ function Controls (Glide, Components, Events) {
        * @type {HTMLCollection}
        */
       this._c = Components.Html.root.querySelectorAll(CONTROLS_SELECTOR);
+
+      /**
+       * Collection of arrow control HTML elements.
+       *
+       * @private
+       * @type {Object}
+       */
+      this._arrowControls = {
+        previous: Components.Html.root.querySelectorAll(PREVIOUS_CONTROLS_SELECTOR),
+        next: Components.Html.root.querySelectorAll(NEXT_CONTROLS_SELECTOR)
+      };
 
       this.addBindings();
     },
@@ -3345,6 +3453,10 @@ function Controls (Glide, Components, Events) {
       var settings = Glide.settings;
       var item = controls[Glide.index];
 
+      if (!item) {
+        return;
+      }
+
       if (item) {
         item.classList.add(settings.classes.nav.active);
 
@@ -3367,6 +3479,69 @@ function Controls (Glide, Components, Events) {
       if (item) {
         item.classList.remove(Glide.settings.classes.nav.active);
       }
+    },
+
+
+    /**
+     * Calculates, removes or adds `Glide.settings.classes.disabledArrow` class on the control arrows
+     */
+    setArrowState: function setArrowState() {
+      if (Glide.settings.rewind) {
+        return;
+      }
+
+      var next = Controls._arrowControls.next;
+      var previous = Controls._arrowControls.previous;
+
+      this.resetArrowState(next, previous);
+
+      if (Glide.index === 0) {
+        this.disableArrow(previous);
+      }
+
+      if (Glide.index === Components.Run.length) {
+        this.disableArrow(next);
+      }
+    },
+
+
+    /**
+     * Removes `Glide.settings.classes.disabledArrow` from given NodeList elements
+     *
+     * @param {NodeList[]} lists
+     */
+    resetArrowState: function resetArrowState() {
+      var settings = Glide.settings;
+
+      for (var _len = arguments.length, lists = Array(_len), _key = 0; _key < _len; _key++) {
+        lists[_key] = arguments[_key];
+      }
+
+      lists.forEach(function (list) {
+        list.forEach(function (element) {
+          element.classList.remove(settings.classes.arrow.disabled);
+        });
+      });
+    },
+
+
+    /**
+     * Adds `Glide.settings.classes.disabledArrow` to given NodeList elements
+     *
+     * @param {NodeList[]} lists
+     */
+    disableArrow: function disableArrow() {
+      var settings = Glide.settings;
+
+      for (var _len2 = arguments.length, lists = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        lists[_key2] = arguments[_key2];
+      }
+
+      lists.forEach(function (list) {
+        list.forEach(function (element) {
+          element.classList.add(settings.classes.arrow.disabled);
+        });
+      });
     },
 
 
@@ -3423,16 +3598,20 @@ function Controls (Glide, Components, Events) {
 
     /**
      * Handles `click` event on the arrows HTML elements.
-     * Moves slider in driection precised in
+     * Moves slider in direction given via the
      * `data-glide-dir` attribute.
      *
      * @param {Object} event
-     * @return {Void}
+     * @return {void}
      */
     click: function click(event) {
-      event.preventDefault();
+      if (!supportsPassive$1 && event.type === 'touchstart') {
+        event.preventDefault();
+      }
 
-      Components.Run.make(Components.Direction.resolve(event.currentTarget.getAttribute('data-glide-dir')));
+      var direction = event.currentTarget.getAttribute('data-glide-dir');
+
+      Components.Run.make(Components.Direction.resolve(direction));
     }
   };
 
@@ -3454,6 +3633,13 @@ function Controls (Glide, Components, Events) {
    */
   Events.on(['mount.after', 'move.after'], function () {
     Controls.setActive();
+  });
+
+  /**
+   * Add or remove disabled class of arrow elements
+   */
+  Events.on(['mount.after', 'run'], function () {
+    Controls.setArrowState();
   });
 
   /**
@@ -3517,12 +3703,15 @@ function Keyboard (Glide, Components, Events) {
      * @return {Void}
      */
     press: function press(event) {
+      var perSwipe = Glide.settings.perSwipe;
+
+
       if (event.keyCode === 39) {
-        Components.Run.make(Components.Direction.resolve('>'));
+        Components.Run.make(Components.Direction.resolve(perSwipe + '>'));
       }
 
       if (event.keyCode === 37) {
-        Components.Run.make(Components.Direction.resolve('<'));
+        Components.Run.make(Components.Direction.resolve(perSwipe + '<'));
       }
     }
   };
@@ -3595,6 +3784,8 @@ function Autoplay (Glide, Components, Events) {
             Components.Run.make('>');
 
             _this.start();
+
+            Events.emit('autoplay');
           }, this.time);
         }
       }
@@ -3619,12 +3810,16 @@ function Autoplay (Glide, Components, Events) {
     bind: function bind() {
       var _this2 = this;
 
-      Binder.on('mouseover', Components.Html.root, function () {
+      Binder.on('mouseenter', Components.Html.root, function () {
         _this2.stop();
+
+        Events.emit('autoplay.enter');
       });
 
-      Binder.on('mouseout', Components.Html.root, function () {
+      Binder.on('mouseleave', Components.Html.root, function () {
         _this2.start();
+
+        Events.emit('autoplay.leave');
       });
     },
 
