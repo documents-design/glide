@@ -49,6 +49,11 @@ export default {
   gap: 10,
 
   /**
+   * Allows to use fixed-width slides
+   */
+  fixedWidth: false,
+
+  /**
    * Change slides after a specified interval. Use `false` for turning off autoplay.
    *
    * @type {Number|Boolean}

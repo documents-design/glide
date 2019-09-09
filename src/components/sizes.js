@@ -10,9 +10,10 @@ export default function (Glide, Components, Events) {
     setupSlides () {
       let width = `${this.slideWidth}px`
       let slides = Components.Html.slides
-
-      for (let i = 0; i < slides.length; i++) {
-        slides[i].style.width = width
+      if (!Glide.settings.fixedWidth) {
+        for (let i = 0; i < slides.length; i++) {
+          slides[i].style.width = width
+        }
       }
     },
 
@@ -32,11 +33,11 @@ export default function (Glide, Components, Events) {
      */
     remove () {
       let slides = Components.Html.slides
-
-      for (let i = 0; i < slides.length; i++) {
-        slides[i].style.width = ''
+      if (!Glide.settings.fixedWidth) {
+        for (let i = 0; i < slides.length; i++) {
+          slides[i].style.width = ''
+        }
       }
-
       Components.Html.wrapper.style.width = ''
     }
   }
@@ -81,6 +82,11 @@ export default function (Glide, Components, Events) {
      * @return {Number}
      */
     get () {
+      if (Glide.settings.fixedWidth) {
+        if (Components.Html.slides.length > 0) {
+          return Components.Html.slides[0].getBoundingClientRect().width
+        }
+      }
       return (Sizes.width / Glide.settings.perView) - Components.Peek.reductor - Components.Gaps.reductor
     }
   })
