@@ -55,6 +55,11 @@ var defaults = {
   gap: 10,
 
   /**
+   * Allows to use fixed-width slides
+   */
+  fixedWidth: false,
+
+  /**
    * Change slides after a specified interval. Use `false` for turning off autoplay.
    *
    * @type {Number|Boolean}
@@ -1828,9 +1833,10 @@ function Sizes (Glide, Components, Events) {
     setupSlides: function setupSlides() {
       var width = this.slideWidth + 'px';
       var slides = Components.Html.slides;
-
-      for (var i = 0; i < slides.length; i++) {
-        slides[i].style.width = width;
+      if (!Glide.settings.fixedWidth) {
+        for (var i = 0; i < slides.length; i++) {
+          slides[i].style.width = width;
+        }
       }
     },
 
@@ -1852,11 +1858,11 @@ function Sizes (Glide, Components, Events) {
      */
     remove: function remove() {
       var slides = Components.Html.slides;
-
-      for (var i = 0; i < slides.length; i++) {
-        slides[i].style.width = '';
+      if (!Glide.settings.fixedWidth) {
+        for (var i = 0; i < slides.length; i++) {
+          slides[i].style.width = '';
+        }
       }
-
       Components.Html.wrapper.style.width = '';
     }
   };
@@ -1901,6 +1907,11 @@ function Sizes (Glide, Components, Events) {
      * @return {Number}
      */
     get: function get() {
+      if (Glide.settings.fixedWidth) {
+        if (Components.Html.slides.length > 0) {
+          return Components.Html.slides[0].getBoundingClientRect().width;
+        }
+      }
       return Sizes.width / Glide.settings.perView - Components.Peek.reductor - Components.Gaps.reductor;
     }
   });
